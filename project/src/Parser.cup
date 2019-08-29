@@ -1,0 +1,200 @@
+import java_cup.runtime.*;
+
+parser code {:
+
+    private Lexer lexer;
+    public  boolean syntaxErrors = false;
+
+    public Parser(Lexer lexer) {
+      super(lexer);
+      this.lexer = lexer;
+}
+
+    public void syntax_error(Symbol current_token) {
+      syntaxErrors = true;
+      report_error(
+          "Syntax error at line " + (current_token.left+1) + ", column "
+          + current_token.right + ". ", null
+      );
+    }
+
+:};
+
+scan with {: return lexer.next_token(); :}
+
+//terminals
+terminal    INT, FLOAT, RAT, CHAR, STRING, SEQ, TOP, BOOL, SEC, LOOP, POOL, IF, THEN, ELSE, BREAK, FI, READ, TDEF, FDEF, PRINT, RETURN, MAIN, PLUS, MINUS, MULT, DIV, POWER, COLON, DOT, GREATER, LESS, LESSEQ, GREATEREQ, EQUAL, ASSIGN, NOTEQ, NOT, AND, OR, IN, CONCAT, LPAREN, RPAREN, LBRACKET, RBRACKET, LBRACE, RBRACE, SEMICOLON, COMMA, NULL, ID;
+
+//nonterminals
+nonterminal   program, main, statement, statements, if_statements, break_statements, return_statements, loop_statement, loop_statements, security, security_list, types, operators, ids_statements, function_call, type_def, function_def, declaration, declarations, declaration_list, declaration_list_item, initiation, expression, expressions, slice_expression, function, ids;
+
+//precedence
+precedence nonassoc IF, ELSE, COLON;
+precedence left PLUS, MINUS, MULT, DIV, POWER;
+precedence left EQUAL, NOTEQ, LESS, LESSEQ, GREATEREQ;
+precedence left AND, OR;
+precedence left LPAREN, RPAREN, LBRACKET, RBRACKET;
+precedence left DOT, IN;
+precedence right NOT, CONCAT;
+
+
+//production rules
+//construction of the whole program
+program                   ::= main
+                            | main declarations
+                            | declarations main
+                            | declarations main declarations
+                            ;
+
+main                      ::= MAIN LBRACE function RBRACE SEMICOLON
+                            ;
+
+ids                       ::= ID
+                            | ids DOT ID
+                            ;
+
+if_statements             ::= IF LPAREN expression RPAREN THEN statements FI
+                            | IF LPAREN expression RPAREN THEN statements ELSE statements FI
+                            ;
+
+break_statements          ::= BREAK SEMICOLON
+                            | BREAK expression SEMICOLON
+                            ;
+
+return_statements         ::= RETURN expression SEMICOLON
+                            | RETURN SEMICOLON
+                            ;
+
+function_call             ::= ID LPAREN expressions RPAREN SEMICOLON
+                            |	ID LPAREN RPAREN SEMICOLON
+                            | ID LPAREN expression RPAREN
+                            | ID LPAREN expression RPAREN DOT ids
+                            ;
+
+loop_statement            ::= ids ASSIGN expressions SEMICOLON
+                            | if_statements
+                            | break_statements
+                            | LOOP loop_statements POOL
+                            | READ ids SEMICOLON
+                            | PRINT expression SEMICOLON
+                            | return_statements
+                            ;
+
+loop_statements           ::= loop_statement
+                            | loop_statement loop_statement
+                            ;
+
+statement                 ::= ids ASSIGN expressions SEMICOLON
+                            | if_statements
+                            | return_statements
+                            | break_statements
+                            |	function_call
+                            | LOOP loop_statements POOL
+                            | READ ids SEMICOLON
+                            | PRINT expression SEMICOLON
+                            ;
+
+statements                ::= statement
+                            | statement statement
+                            ;
+
+initiation                ::= ID COLON security SEMICOLON
+                            | ID COLON security ASSIGN expressions SEMICOLON
+                            ;
+
+type_def                  ::= TDEF ID LBRACE RBRACE SEMICOLON
+                            | TDEF ID LBRACE declaration_list RBRACE SEMICOLON
+                            ;
+
+function_def              ::= FDEF ID LPAREN RPAREN SEMICOLON
+                            | FDEF ID LPAREN declaration_list RPAREN LBRACE RBRACE SEMICOLON
+                            | FDEF ID LPAREN declaration_list RPAREN LBRACE function RBRACE SEMICOLON
+                            | FDEF ID LPAREN declaration_list RPAREN LBRACE function RBRACE COLON security SEMICOLON
+                            | FDEF ID LPAREN RPAREN LBRACE function RBRACE SEMICOLON
+                            | FDEF ID LPAREN RPAREN LBRACE function RBRACE COLON security SEMICOLON
+                            ;
+
+declaration               ::= initiation
+                            | type_def
+                            | function_def
+                            ;
+
+declarations              ::= declaration
+                            | declarations declaration
+                            ;
+
+
+declaration_list          ::= declaration_list_item
+                            | declaration_list_item COMMA declaration_list_item
+                            ;
+
+declaration_list_item      ::= ID COLON security;
+
+security                  ::= types SEC
+                            | ID
+                            | SEQ LESS security_list GREATER
+                            ;
+
+security_list              ::= types SEC
+                            | ID
+                            | SEQ LESS security_list GREATER
+                            | TOP SEC
+                            ;
+
+types                     ::= INT
+                            | FLOAT
+                            | RAT
+                            | CHAR
+                            | BOOL
+                            ;
+
+ids_statements            ::= ids LBRACKET expression RBRACKET
+                            | ids LBRACKET slice_expression RBRACKET
+                            | ids LBRACKET expression RBRACKET DOT ids
+                            | ids LBRACKET slice_expression RBRACKET DOT ids
+                            ;
+
+operators                 ::= AND
+                            | OR
+                            | EQUAL
+                            | PLUS
+                            | MINUS
+                            | MULT
+                            | DIV
+                            | POWER
+                            | LESS
+                            | LESSEQ
+                            | GREATEREQ
+                            | NOTEQ
+                            | IN
+                            | CONCAT
+                            ;
+
+expression                ::= NULL
+                            | types
+                            | STRING
+                            | ids
+                            | NOT expression
+                            | MINUS expression
+                            | LBRACKET RBRACKET
+                            | LBRACKET expressions RBRACKET
+                            | LPAREN expressions RPAREN
+                            | function_call
+                            | ids_statements
+                            | expression operators expression
+                            ;
+
+expressions               ::= expression
+                            | expressions COMMA expression
+                            ;
+
+slice_expression          ::= expression COLON expression
+                            | expression COLON
+                            | COLON expression
+                            | COLON
+                            ;
+
+function                  ::= statements
+                            | declarations
+                            | declarations statements
+                            ;
